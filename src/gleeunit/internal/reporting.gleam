@@ -8,17 +8,21 @@ import gleam/result
 import gleam/string
 import gleeunit/internal/gleam_panic.{type GleamPanic}
 
-pub type State {
-  State(passed: Int, failed: Int, skipped: Int)
+pub type SubState {
+  SubState(verbose: Bool, last_test_started: Int)
 }
 
-pub fn new_state() -> State {
-  State(passed: 0, failed: 0, skipped: 0)
+pub type State {
+  State(passed: Int, failed: Int, skipped: Int, sub: SubState)
+}
+
+pub fn new_state(verb: Bool) -> State {
+  State(passed: 0, failed: 0, skipped: 0, sub: SubState(verbose: verb, last_test_started: 0))
 }
 
 pub fn finished(state: State) -> Int {
   case state {
-    State(passed: 0, failed: 0, skipped: 0) -> {
+    State(passed: 0, failed: 0, skipped: 0, ..) -> {
       io.println("\nNo tests found!")
       1
     }
@@ -65,6 +69,10 @@ pub fn finished(state: State) -> Int {
 
 pub fn test_passed(state: State) -> State {
   io.print(green("."))
+  case state.sub.verbose {
+    True -> io.print("\n")
+    False -> io.print("")
+  }
   State(..state, passed: state.passed + 1)
 }
 

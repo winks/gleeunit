@@ -11,15 +11,19 @@ import gleam/string
 /// A test that panics is considered a failure.
 ///
 pub fn main() -> Nil {
-  do_main()
+  do_main(False)
+}
+
+pub fn verbose() -> Nil {
+  do_main(True)
 }
 
 @external(javascript, "./gleeunit_ffi.mjs", "main")
-fn do_main() -> Nil {
+fn do_main(glee_verbose: Bool) -> Nil {
   let options = [
     Verbose,
     NoTty,
-    Report(#(GleeunitProgress, [Colored(True)])),
+    Report(#(GleeunitProgress, [Colored(True), VerboseOutput(glee_verbose)])),
     ScaleTimeouts(10),
   ]
 
@@ -73,6 +77,7 @@ type ReportModuleName {
 
 type GleeunitProgressOption {
   Colored(Bool)
+  VerboseOutput(Bool)
 }
 
 type EunitOption {
