@@ -19,11 +19,11 @@ pub fn verbose() -> Nil {
 }
 
 @external(javascript, "./gleeunit_ffi.mjs", "main")
-fn do_main(glee_verbose: Bool) -> Nil {
+fn do_main(verbose_output: Bool) -> Nil {
   let options = [
     Verbose,
     NoTty,
-    Report(#(GleeunitProgress, [Colored(True), VerboseOutput(glee_verbose)])),
+    Report(#(GleeunitProgress, [Colored(True), VerboseOutput(verbose_output)])),
     ScaleTimeouts(10),
   ]
 
