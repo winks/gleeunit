@@ -9,7 +9,7 @@ import gleam/string
 import gleeunit/internal/gleam_panic.{type GleamPanic}
 
 pub type SubState {
-  SubState(verbose: Bool, last_test_started: Int)
+  SubState(verbose: Bool, last_group: String, last_group_started: Int, last_test_started: Int)
 }
 
 pub type State {
@@ -17,7 +17,8 @@ pub type State {
 }
 
 pub fn new_state(verb: Bool) -> State {
-  State(passed: 0, failed: 0, skipped: 0, sub: SubState(verbose: verb, last_test_started: 0))
+  State(passed: 0, failed: 0, skipped: 0,
+        sub: SubState(verbose: verb, last_group: "", last_group_started: 0, last_test_started: 0))
 }
 
 pub fn finished(state: State) -> Int {
@@ -68,10 +69,9 @@ pub fn finished(state: State) -> Int {
 }
 
 pub fn test_passed(state: State) -> State {
-  io.print(green("."))
   case state.sub.verbose {
-    True -> io.print("\n")
-    False -> io.print("")
+    True -> io.print(green("success\n"))
+    False -> io.print(green("."))
   }
   State(..state, passed: state.passed + 1)
 }

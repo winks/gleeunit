@@ -26,24 +26,49 @@ init(Options) ->
 
 handle_begin(group, _data, State) ->
     State;
-handle_begin(test, _data, State) ->
-    Start = erlang:system_time(millisecond),
-    {Sub, Verb, _} =  element(5, State),
-    setelement(5, State, {Sub, Verb, Start}).
+handle_begin(test, Data, State) ->
+    {AtomModule, _AtomFunction, _Arity} = proplists:get_value(source, Data),
+    Module = erlang:atom_to_binary(AtomModule),
+    {Sub, Verb, Group, GroupStart, _} =  element(5, State),
+    % Unfortunatrely handle_begin(group, ..) lacks the info we need, so
+    % we need to keep the state of the last run test's group
+    [NewGroup, GroupHasChanged] = case Module of
+               Group -> [undefined, ok];
+               _ -> [Module, changed]
+           end,
+    [Group2, GroupStart2] = case GroupHasChanged of
+               changed ->
+                 io:format('> ~w \n', [binary_to_atom(NewGroup)]),
+                 [NewGroup, erlang:system_time(millisecond)];
+               _ -> [Group, GroupStart]
+             end,
+    TestStart = erlang:system_time(millisecond),
+    setelement(5, State, {Sub, Verb, Group2, GroupStart2, TestStart}).
 
 handle_end(group, _data, State) ->
+    {_Sub, Verb, _Group, GroupStart, _TestStart} =  element(5, State),
+    case Verb of
+      false -> ok;
+      true ->
+        GroupStop = erlang:system_time(millisecond),
+        Diff = GroupStop - GroupStart,
+        io:format('Total: ~w ms\n', [Diff])
+    end,
     State;
 handle_end(test, Data, State) ->
     {AtomModule, AtomFunction, _Arity} = proplists:get_value(source, Data),
     Module = erlang:atom_to_binary(AtomModule),
     Function = erlang:atom_to_binary(AtomFunction),
-    {_, Verb, Start} =  element(5, State),
+    {_, Verb, _Group, _GS, TestStart} =  element(5, State),
     case Verb of
       false -> ok;
       true ->
-        Stop = erlang:system_time(millisecond),
-        Diff = Stop - Start,
-        io:format('~w (~w ms) ',[AtomFunction,Diff])
+        TestStop = erlang:system_time(millisecond),
+        Diff = TestStop - TestStart,
+        % this assumes "TEST_NAME (xyz ms)" fits into 50 chars
+        PadLen = byte_size(Function) + string:length(integer_to_list(Diff)) + 8,
+        Pad = string:pad("", 50-PadLen, trailing),
+        io:format('  ~w (~w ms)~ts', [AtomFunction, Diff, Pad])
     end,
 
     % EUnit swallows stdout, so print it to make debugging easier.
