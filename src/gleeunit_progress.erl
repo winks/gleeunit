@@ -18,18 +18,22 @@ start(Options) ->
     eunit_listener:start(?MODULE, Options).
 
 init(Options) ->
+    Colored = case proplists:get_value(colored, Options) of
+      undefined -> false;
+      C -> C
+    end,
     Verb = case proplists:get_value(verbose_output, Options) of
       undefined -> false;
       V -> V
     end,
-    ?reporting:new_state(Verb).
+    ?reporting:new_state(Colored, Verb).
 
 handle_begin(group, _data, State) ->
     State;
 handle_begin(test, Data, State) ->
     {AtomModule, _AtomFunction, _Arity} = proplists:get_value(source, Data),
     Module = erlang:atom_to_binary(AtomModule),
-    {Sub, Verb, Group, GroupStart, _} =  element(5, State),
+    {Sub, Colored, Verb, Group, GroupStart, _} =  element(5, State),
     % Unfortunatrely handle_begin(group, ..) lacks the info we need, so
     % we need to keep the state of the last run test's group
     [NewGroup, GroupHasChanged] = case Module of
@@ -43,10 +47,10 @@ handle_begin(test, Data, State) ->
                _ -> [Group, GroupStart]
              end,
     TestStart = erlang:system_time(millisecond),
-    setelement(5, State, {Sub, Verb, Group2, GroupStart2, TestStart}).
+    setelement(5, State, {Sub, Colored, Verb, Group2, GroupStart2, TestStart}).
 
 handle_end(group, _data, State) ->
-    {_Sub, Verb, _Group, GroupStart, _TestStart} =  element(5, State),
+    {_Sub, _Colored, Verb, _Group, GroupStart, _TestStart} =  element(5, State),
     case Verb of
       false -> ok;
       true ->
@@ -59,7 +63,7 @@ handle_end(test, Data, State) ->
     {AtomModule, AtomFunction, _Arity} = proplists:get_value(source, Data),
     Module = erlang:atom_to_binary(AtomModule),
     Function = erlang:atom_to_binary(AtomFunction),
-    {_, Verb, _Group, _GS, TestStart} =  element(5, State),
+    {_, _Colored, Verb, _Group, _GS, TestStart} =  element(5, State),
     case Verb of
       false -> ok;
       true ->

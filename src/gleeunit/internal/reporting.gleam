@@ -9,19 +9,32 @@ import gleam/string
 import gleeunit/internal/gleam_panic.{type GleamPanic}
 
 pub type SubState {
-  SubState(verbose: Bool, last_group: String, last_group_started: Int, last_test_started: Int)
+  SubState(colored:Bool, verbose: Bool, last_group: String, last_group_started: Int, last_test_started: Int)
 }
 
 pub type State {
   State(passed: Int, failed: Int, skipped: Int, sub: SubState)
 }
 
-pub fn new_state(verb: Bool) -> State {
+pub fn new_state(color:Bool, verb: Bool) -> State {
   State(passed: 0, failed: 0, skipped: 0,
-        sub: SubState(verbose: verb, last_group: "", last_group_started: 0, last_test_started: 0))
+        sub: SubState(colored: color, verbose: verb, last_group: "",
+                      last_group_started: 0, last_test_started: 0))
 }
 
 pub fn finished(state: State) -> Int {
+  let green_ = case state.sub.colored {
+     True -> green
+     False -> no_color
+  }
+  let yellow_ = case state.sub.colored {
+     True -> yellow
+     False -> no_color
+  }
+  let red_ = case state.sub.colored {
+     True -> red
+     False -> no_color
+  }
   case state {
     State(passed: 0, failed: 0, skipped: 0, ..) -> {
       io.println("\nNo tests found!")
@@ -30,7 +43,7 @@ pub fn finished(state: State) -> Int {
     State(failed: 0, skipped: 0, ..) -> {
       let message =
         "\n" <> int.to_string(state.passed) <> " passed, no failures"
-      io.println(green(message))
+      io.println(green_(message))
       0
     }
     State(skipped: 0, ..) -> {
@@ -40,7 +53,7 @@ pub fn finished(state: State) -> Int {
         <> " passed, "
         <> int.to_string(state.failed)
         <> " failures"
-      io.println(red(message))
+      io.println(red_(message))
       1
     }
     State(failed: 0, ..) -> {
@@ -50,7 +63,7 @@ pub fn finished(state: State) -> Int {
         <> " passed, 0 failures, "
         <> int.to_string(state.skipped)
         <> " skipped"
-      io.println(yellow(message))
+      io.println(yellow_(message))
       1
     }
     State(..) -> {
@@ -62,16 +75,20 @@ pub fn finished(state: State) -> Int {
         <> " failures, "
         <> int.to_string(state.skipped)
         <> " skipped"
-      io.println(red(message))
+      io.println(red_(message))
       1
     }
   }
 }
 
 pub fn test_passed(state: State) -> State {
+  let green_ = case state.sub.colored {
+     True -> green
+     False -> no_color
+  }
   case state.sub.verbose {
-    True -> io.print(green("success\n"))
-    False -> io.print(green("."))
+    True -> io.print(green_("success\n"))
+    False -> io.print(green_("."))
   }
   State(..state, passed: state.passed + 1)
 }
@@ -208,7 +225,11 @@ fn code_snippet(src: Option(BitArray), start: Int, end: Int) -> String {
 }
 
 pub fn test_skipped(state: State, module: String, function: String) -> State {
-  io.print("\n" <> module <> "." <> function <> yellow(" skipped"))
+  let yellow_ = case state.sub.colored {
+     True -> yellow
+     False -> no_color
+  }
+  io.print("\n" <> module <> "." <> function <> yellow_(" skipped"))
   State(..state, skipped: state.skipped + 1)
 }
 
@@ -234,6 +255,10 @@ fn red(text: String) -> String {
 
 fn grey(text: String) -> String {
   "\u{001b}[90m" <> text <> "\u{001b}[39m"
+}
+
+fn no_color(text: String) -> String {
+  text
 }
 
 @external(erlang, "file", "read_file")
